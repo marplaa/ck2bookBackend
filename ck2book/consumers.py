@@ -103,6 +103,7 @@ class ChatConsumer(WebsocketConsumer):
 
         ok = self.compile_latex(directory_path, file_id)
 
+
         if True:  # ok:
             logging.info('moving pdf file to static...')
             try:
@@ -122,21 +123,28 @@ class ChatConsumer(WebsocketConsumer):
     def compile_latex(self, directory, file_id):
         logging.info('compiling latex...')
         ok = False
+        self.sendMessage('message', 51, 'Kompiliere (Runde 1 von 2)')
         if not subprocess.run([production_prefix + "lualatex", file_id + '.tex'], cwd=str(directory)).returncode:
+            self.sendMessage('message', 75, 'Kompiliere (Runde 2 von 2)')
             ok = not subprocess.run([production_prefix + "lualatex", file_id + '.tex'],
                                     cwd=str(directory)).returncode
 
         return ok
 
+    def sendMessage(self, type, progress, data):
+        self.send(text_data=json.dumps({
+            'type': type,
+            'progress': progress,
+            'data': data
+        }))
+
     def download_images(self, images, path):
         logging.info("downloading images to:" + str(path))
         i = 1
+
         for image in images:
 
-            self.send(text_data=json.dumps({
-                'type': 'message',
-                'data': 'Lade Bild: ' + image['url']
-            }))
+            self.sendMessage('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
 
             hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
             orig_name = hash + '.jpg'
