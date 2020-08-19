@@ -17,13 +17,16 @@ from bs4 import BeautifulSoup
 production = False
 
 if production:
-    production_prefix = '/usr/bin/'
+    luatex_prefix = '/usr/bin/'
     base_url = ''
+    media_dir = 'media/books'
 else:
-    production_prefix = ''
+    luatex_prefix = ''
     base_url = 'http://localhost:8000'
+    media_dir = 'media/books'
 
-class ChatConsumer(WebsocketConsumer):
+
+class BookConsumer(WebsocketConsumer):
 
     def connect(self):
         self.accept()
@@ -67,7 +70,6 @@ class ChatConsumer(WebsocketConsumer):
             # print(soup.find("div", {'class': 'recipe-images'}))
             images = soup.find("div", {'class': 'recipe-images'}).findAll('amp-img')
             for img in images:
-
                 image = re.sub(r'/crop-[0-9x]*/', '/crop-960x640/', img.get('src'))
                 img_list.append(image)
 
@@ -103,30 +105,30 @@ class ChatConsumer(WebsocketConsumer):
 
         ok = self.compile_latex(directory_path, file_id)
 
-
-        if True:  # ok:
-            logging.info('moving pdf file to static...')
+        if ok:
+            logging.info('moving pdf file to /media...')
             try:
-                (Path('media/books') / file_id).mkdir()
-                move(directory_path / (file_id + '.pdf'), Path('media/books') / file_id / 'Kochbuch.pdf')
+                (Path(media_dir) / file_id).mkdir()
+                move(directory_path / (file_id + '.pdf'), Path(media_dir) / file_id / 'Kochbuch.pdf')
                 if production:
                     rmtree(str(directory_path))
             except:
-                pass
+                logging.error('error while moving pdf file to /media')
         else:
             logging.error('error while compiling texfile')
 
         # print(data)
         # return JsonResponse({'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'})
-        self.send(text_data=json.dumps({'type': 'book', 'data': {'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'}}))
+        self.send(text_data=json.dumps(
+            {'type': 'book', 'data': {'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'}}))
 
     def compile_latex(self, directory, file_id):
         logging.info('compiling latex...')
         ok = False
         self.sendMessage('message', 51, 'Kompiliere (Runde 1 von 2)')
-        if not subprocess.run([production_prefix + "lualatex", file_id + '.tex'], cwd=str(directory)).returncode:
+        if not subprocess.run([luatex_prefix + "lualatex", file_id + '.tex'], cwd=str(directory)).returncode:
             self.sendMessage('message', 75, 'Kompiliere (Runde 2 von 2)')
-            ok = not subprocess.run([production_prefix + "lualatex", file_id + '.tex'],
+            ok = not subprocess.run([luatex_prefix + "lualatex", file_id + '.tex'],
                                     cwd=str(directory)).returncode
 
         return ok
@@ -146,8 +148,8 @@ class ChatConsumer(WebsocketConsumer):
 
             self.sendMessage('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
 
-            hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
-            orig_name = hash + '.jpg'
+            img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
+            orig_name = img_hash + '.jpg'
             logging.info('downloading (' + str(i) + ' of ' + str(len(images)) + '): ' + str(image['url']))
             try:
                 wget.download(image['url'], out=str(path / orig_name))
@@ -157,10 +159,9 @@ class ChatConsumer(WebsocketConsumer):
 
             # iterate through all resolutions per picture
             for size in image['sizes']:
-                # name = hash + '-' + res + '.jpg'
 
                 resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
-                self.crop_image(path, hash, resolution, size['filter'])
+                self.crop_image(path, img_hash, resolution, size['filter'])
             i = i + 1
 
     def crop_image(self, path, name, size, filter):
