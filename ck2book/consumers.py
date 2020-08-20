@@ -16,6 +16,10 @@ from bs4 import BeautifulSoup
 
 production = True
 
+logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s')
+
+logging.info('Starting consumer')
+
 if production:
     luatex_prefix = '/usr/bin/'
     base_url = 'https://ck2book.coretechs.de:8000'
