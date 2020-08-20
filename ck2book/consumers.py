@@ -14,11 +14,11 @@ import wget
 from PIL import Image, ImageFilter, ImageEnhance
 from bs4 import BeautifulSoup
 
-production = False
+production = True
 
 if production:
     luatex_prefix = '/usr/bin/'
-    base_url = ''
+    base_url = 'https://ck2book.coretechs.de:8000'
     media_dir = 'media/books'
 else:
     luatex_prefix = ''
