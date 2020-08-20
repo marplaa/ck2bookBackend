@@ -25,7 +25,7 @@ SECRET_KEY = '#+p7kh$p12s0jwg(873nx2odvmrz()+k^g$rl4+li&5&p#-(dq'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['ck2book.coretechs.de']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
