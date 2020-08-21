@@ -114,10 +114,16 @@ class BookConsumer(WebsocketConsumer):
             try:
                 (Path(media_dir) / file_id).mkdir()
                 move(directory_path / (file_id + '.pdf'), Path(media_dir) / file_id / 'Kochbuch.pdf')
+
+            except:
+                logging.error('error while moving pdf file to /media')
+
+            try:
                 if production:
                     rmtree(str(directory_path))
             except:
-                logging.error('error while moving pdf file to /media')
+                logging.error('error while removing directory')
+                
         else:
             logging.error('error while compiling texfile')
 
