@@ -86,7 +86,7 @@ class BookConsumer(WebsocketConsumer):
     def create_tex_file(self, data):
         logging.info("creating tex file")
         # data = json.loads(request.body)
-        file_id = hashlib.md5(bytearray(data['content'], encoding="utf-8")).hexdigest()
+        file_id = data['id']  # hashlib.md5(bytearray(data['content'], encoding="utf-8")).hexdigest()
         directory_path = Path('temp') / Path(file_id)
 
         try:
@@ -123,7 +123,7 @@ class BookConsumer(WebsocketConsumer):
                     rmtree(str(directory_path))
             except:
                 logging.error('error while removing directory')
-                
+
         else:
             logging.error('error while compiling texfile')
 
