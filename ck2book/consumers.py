@@ -30,6 +30,85 @@ else:
     media_dir = 'media/books'
 
 
+def crop_image(path, name, size, filter):
+    logging.info("Cropping image " + name + ' to size ' + str(size[0]) + 'x' + str(size[1]))
+
+    img = Image.open(str(path / (name + '.jpg')))
+    ar_orig = img.size[0] / img.size[1]
+    ar_crop = size[0] / size[1]
+
+    # orig_width = crop_width
+    if ar_orig < ar_crop:
+        crop_height = int(img.size[0] / ar_crop)
+        upper_left = int((img.size[1] - crop_height) / 2)
+        box = (0, upper_left, img.size[0], crop_height + upper_left)
+    else:
+        crop_width = int(img.size[1] * ar_crop)
+        upper_left = int((img.size[0] - crop_width) / 2)
+        box = (upper_left, 0, crop_width + upper_left, img.size[1])
+
+    cropped_img = img.crop(box)
+
+    # resize
+
+    image = cropped_img.resize((size[0], size[1]), Image.ANTIALIAS)
+
+    # apply filters here
+    filtered = ''
+    for f in filter:
+
+        if f == 'blur':
+            image = image.filter(ImageFilter.GaussianBlur(float(filter[f])))
+            filtered = '-f'
+        elif f == 'brightness':
+            image = ImageEnhance.Brightness(image).enhance(float(filter[f]))
+            filtered = '-f'
+        elif f == 'color':
+            image = ImageEnhance.Color(image).enhance(float(filter[f]))
+            filtered = '-f'
+        elif f == 'contrast':
+            image = ImageEnhance.Contrast(image).enhance(float(filter[f]))
+            filtered = '-f'
+
+    image.save(str(path / (name + '-' + str(size[0]) + 'x' + str(size[1]) + filtered + '.jpg')))
+
+
+def makelist(table):
+    result = []
+    empty = True
+
+    rows = table.findAll('tr')
+    for row in rows:
+        new_row = []
+        allcols = row.findAll('td')
+        for col in allcols:
+            empty = True
+            thestrings = []
+
+            for thestring in col.stripped_strings:
+                thestring = re.sub(r'\s+', ' ', thestring)
+
+                thestrings.append(thestring)
+                if not thestring.split() == '':
+                    empty = False
+            thetext = ''.join(thestrings)
+            new_row.append(thetext)
+        # check if row would be empty
+        if not empty:
+            result.append(new_row)
+    return result
+
+
+def soupify(url):
+    if "/drucken/" not in url:
+        url = url.replace("/rezepte/", "/rezepte/drucken/")
+
+    http = urllib3.PoolManager()
+    response = http.request('GET', url)
+
+    return BeautifulSoup(response.data, 'html.parser')
+
+
 class BookConsumer(WebsocketConsumer):
 
     def connect(self):
@@ -50,38 +129,28 @@ class BookConsumer(WebsocketConsumer):
 
         self.create_tex_file(data)
 
-    def soupify(self, url):
-        if "/drucken/" not in url:
-            url = url.replace("/rezepte/", "/rezepte/drucken/")
-
-        http = urllib3.PoolManager()
-        response = http.request('GET', url)
-
-        return BeautifulSoup(response.data, 'html.parser')
-
-    # todo check if images überhaupt vorhanden sind unter bilderübersicht
-    def get_images(self, url):
-        logging.info('retrieving images...')
-        url = url.replace("/rezepte/", "/rezepte/bilderuebersicht/")
-        http = urllib3.PoolManager()
-
-        img_list = []
-        try:
-            logging.info("getting images from url: " + url)
-            response = http.request('GET', url)
-
-            soup = BeautifulSoup(response.data, 'html.parser')
-            # print(soup.find("div", {'class': 'recipe-images'}))
-            images = soup.find("div", {'class': 'recipe-images'}).findAll('amp-img')
-            for img in images:
-                image = re.sub(r'/crop-[0-9x]*/', '/crop-960x640/', img.get('src'))
-                img_list.append(image)
-
-        except Exception as ex:
-            print(ex.args)
-            logging.error('error while getting images')
-
-        return img_list
+    # def get_images(self, url):
+    #     logging.info('retrieving images...')
+    #     url = url.replace("/rezepte/", "/rezepte/bilderuebersicht/")
+    #     http = urllib3.PoolManager()
+    #
+    #     img_list = []
+    #     try:
+    #         logging.info("getting images from url: " + url)
+    #         response = http.request('GET', url)
+    #
+    #         soup = BeautifulSoup(response.data, 'html.parser')
+    #         # print(soup.find("div", {'class': 'recipe-images'}))
+    #         images = soup.find("div", {'class': 'recipe-images'}).findAll('amp-img')
+    #         for img in images:
+    #             image = re.sub(r'/crop-[0-9x]*/', '/crop-960x640/', img.get('src'))
+    #             img_list.append(image)
+    #
+    #     except Exception as ex:
+    #         print(ex.args)
+    #         logging.error('error while getting images')
+    #
+    #     return img_list
 
     def create_tex_file(self, data):
         logging.info("creating tex file")
@@ -120,6 +189,7 @@ class BookConsumer(WebsocketConsumer):
 
             try:
                 if production:
+                    logging.info('removing directory...')
                     rmtree(str(directory_path))
             except:
                 logging.error('error while removing directory')
@@ -135,15 +205,15 @@ class BookConsumer(WebsocketConsumer):
     def compile_latex(self, directory, file_id):
         logging.info('compiling latex...')
         ok = False
-        self.sendMessage('message', 51, 'Kompiliere (Runde 1 von 2)')
+        self.send_message('message', 51, 'Kompiliere (Runde 1 von 2)')
         if not subprocess.run([luatex_prefix + "lualatex", file_id + '.tex'], cwd=str(directory)).returncode:
-            self.sendMessage('message', 75, 'Kompiliere (Runde 2 von 2)')
+            self.send_message('message', 75, 'Kompiliere (Runde 2 von 2)')
             ok = not subprocess.run([luatex_prefix + "lualatex", file_id + '.tex'],
                                     cwd=str(directory)).returncode
 
         return ok
 
-    def sendMessage(self, type, progress, data):
+    def send_message(self, type, progress, data):
         self.send(text_data=json.dumps({
             'type': type,
             'progress': progress,
@@ -156,7 +226,7 @@ class BookConsumer(WebsocketConsumer):
 
         for image in images:
 
-            self.sendMessage('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
+            self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
 
             img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
             orig_name = img_hash + '.jpg'
@@ -169,74 +239,6 @@ class BookConsumer(WebsocketConsumer):
 
             # iterate through all resolutions per picture
             for size in image['sizes']:
-
                 resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
-                self.crop_image(path, img_hash, resolution, size['filter'])
+                crop_image(path, img_hash, resolution, size['filter'])
             i = i + 1
-
-    def crop_image(self, path, name, size, filter):
-        logging.info("Cropping image " + name + ' to size ' + str(size[0]) + 'x' + str(size[1]))
-
-        img = Image.open(str(path / (name + '.jpg')))
-        ar_orig = img.size[0] / img.size[1]
-        ar_crop = size[0] / size[1]
-
-        # orig_width = crop_width
-        if ar_orig < ar_crop:
-            crop_height = int(img.size[0] / ar_crop)
-            upper_left = int((img.size[1] - crop_height) / 2)
-            box = (0, upper_left, img.size[0], crop_height + upper_left)
-        else:
-            crop_width = int(img.size[1] * ar_crop)
-            upper_left = int((img.size[0] - crop_width) / 2)
-            box = (upper_left, 0, crop_width + upper_left, img.size[1])
-
-        cropped_img = img.crop(box)
-
-        # resize
-
-        image = cropped_img.resize((size[0], size[1]), Image.ANTIALIAS)
-
-        # apply filters here
-        filtered = ''
-        for f in filter:
-
-            if f == 'blur':
-                image = image.filter(ImageFilter.GaussianBlur(float(filter[f])))
-                filtered = '-f'
-            elif f == 'brightness':
-                image = ImageEnhance.Brightness(image).enhance(float(filter[f]))
-                filtered = '-f'
-            elif f == 'color':
-                image = ImageEnhance.Color(image).enhance(float(filter[f]))
-                filtered = '-f'
-            elif f == 'contrast':
-                image = ImageEnhance.Contrast(image).enhance(float(filter[f]))
-                filtered = '-f'
-
-        image.save(str(path / (name + '-' + str(size[0]) + 'x' + str(size[1]) + filtered + '.jpg')))
-
-    def makelist(self, table):
-        result = []
-        empty = True
-
-        rows = table.findAll('tr')
-        for row in rows:
-            new_row = []
-            allcols = row.findAll('td')
-            for col in allcols:
-                empty = True
-                thestrings = []
-
-                for thestring in col.stripped_strings:
-                    thestring = re.sub(r'\s+', ' ', thestring)
-
-                    thestrings.append(thestring)
-                    if not thestring.split() == '':
-                        empty = False
-                thetext = ''.join(thestrings)
-                new_row.append(thetext)
-            # check if row would be empty
-            if not empty:
-                result.append(new_row)
-        return result

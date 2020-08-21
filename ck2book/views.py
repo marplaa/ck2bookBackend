@@ -1,17 +1,8 @@
-import hashlib
-import json
 import logging
 import re
-import subprocess
-from pathlib import Path
-from shutil import move, rmtree, copy
-
 import urllib3
-import wget
-from PIL import Image, ImageFilter, ImageEnhance
 from bs4 import BeautifulSoup
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 
 logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s')
 
@@ -44,17 +35,8 @@ def get_recipe_data(url):
 
     recipe['text'] = re.sub(r'\s+', ' ', content.get_text('</br>', strip=True)).replace('\n', '')
 
-    # get images
-
-    # soup = soupify(url.replace("/drucken",""))
-    # print(soup.find("div", {"class": "recipe-image"}))
-    # print(url.replace("/drucken",""))
-    # imgs = soup.find("div", {"class": "recipe-image"}).find_all("amp-img")
-    image = soup.find("figure").find("img")
-    # for image in imgs:
-
     try:
-        recipe['images'] = getImages(url)
+        recipe['images'] = get_images(url)
     except:
         pass
 
@@ -74,7 +56,7 @@ def soupify(url):
 
 
 # todo check if images überhaupt vorhanden sind unter bilderübersicht
-def getImages(url):
+def get_images(url):
     logging.info('retrieving images...')
     url = url.replace("/rezepte/", "/rezepte/bilderuebersicht/")
     http = urllib3.PoolManager()
