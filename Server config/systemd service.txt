@@ -1,0 +1,14 @@
+[Unit]
+Description=Daphne instance to serve ck2book
+After=network.target
+
+[Service]
+Restart=on-failure
+User=ck2book
+Group=www-data
+WorkingDirectory=/home/ck2book/ck2bookBackend
+Environment="PATH=/home/ck2book/ck2bookBackend/venv/bin"
+ExecStart=/home/ck2book/ck2bookBackend/venv/bin/daphne -u ck2book.sock ck2bookBackend.asgi:application
+
+[Install]
+WantedBy=multi-user.target

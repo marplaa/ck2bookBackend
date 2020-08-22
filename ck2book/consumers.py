@@ -129,29 +129,6 @@ class BookConsumer(WebsocketConsumer):
 
         self.create_tex_file(data)
 
-    # def get_images(self, url):
-    #     logging.info('retrieving images...')
-    #     url = url.replace("/rezepte/", "/rezepte/bilderuebersicht/")
-    #     http = urllib3.PoolManager()
-    #
-    #     img_list = []
-    #     try:
-    #         logging.info("getting images from url: " + url)
-    #         response = http.request('GET', url)
-    #
-    #         soup = BeautifulSoup(response.data, 'html.parser')
-    #         # print(soup.find("div", {'class': 'recipe-images'}))
-    #         images = soup.find("div", {'class': 'recipe-images'}).findAll('amp-img')
-    #         for img in images:
-    #             image = re.sub(r'/crop-[0-9x]*/', '/crop-960x640/', img.get('src'))
-    #             img_list.append(image)
-    #
-    #     except Exception as ex:
-    #         print(ex.args)
-    #         logging.error('error while getting images')
-    #
-    #     return img_list
-
     def create_tex_file(self, data):
         logging.info("creating tex file")
         # data = json.loads(request.body)
