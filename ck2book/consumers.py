@@ -212,12 +212,14 @@ class BookConsumer(WebsocketConsumer):
             for host in allowed_image_hosts:
                 checked &= image['url'].startswith(host)
 
+            img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
+            orig_name = img_hash + '.jpg'
+            
             if checked:
 
                 self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
 
-                img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
-                orig_name = img_hash + '.jpg'
+
                 logging.info('downloading (' + str(i) + ' of ' + str(len(images)) + '): ' + str(image['url']))
                 try:
                     wget.download(image['url'], out=str(path / orig_name))
