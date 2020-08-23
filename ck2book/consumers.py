@@ -203,19 +203,25 @@ class BookConsumer(WebsocketConsumer):
 
         for image in images:
 
-            self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
+            if image['url'].startswith('https://img.chefkoch-cdn.de/rezepte'):
 
-            img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
-            orig_name = img_hash + '.jpg'
-            logging.info('downloading (' + str(i) + ' of ' + str(len(images)) + '): ' + str(image['url']))
-            try:
-                wget.download(image['url'], out=str(path / orig_name))
-            except Exception as ex:
-                logging.error("could not download image: " + image['url'])
+                self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
+
+                img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
+                orig_name = img_hash + '.jpg'
+                logging.info('downloading (' + str(i) + ' of ' + str(len(images)) + '): ' + str(image['url']))
+                try:
+                    wget.download(image['url'], out=str(path / orig_name))
+                except Exception as ex:
+                    logging.error("could not download image: " + image['url'])
+                    copy(str(Path('static') / 'imagenotfound.jpg'), str(path / orig_name))
+
+                # iterate through all resolutions per picture
+                for size in image['sizes']:
+                    resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
+                    crop_image(path, img_hash, resolution, size['filter'])
+                i = i + 1
+
+            else:
+                self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Fehler: Kein erlaubtes Bild: ' + image['url'])
                 copy(str(Path('static') / 'imagenotfound.jpg'), str(path / orig_name))
-
-            # iterate through all resolutions per picture
-            for size in image['sizes']:
-                resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
-                crop_image(path, img_hash, resolution, size['filter'])
-            i = i + 1
