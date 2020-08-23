@@ -124,7 +124,7 @@ class BookConsumer(WebsocketConsumer):
 
         self.send(text_data=json.dumps({
             'type': 'message',
-            'data': data
+            'data': data['id']
         }))
 
         self.create_tex_file(data)
@@ -174,10 +174,11 @@ class BookConsumer(WebsocketConsumer):
         else:
             logging.error('error while compiling texfile')
 
-        # print(data)
-        # return JsonResponse({'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'})
-        self.send(text_data=json.dumps(
-            {'type': 'book', 'data': {'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'}}))
+        if ok:
+            self.send(text_data=json.dumps(
+                {'type': 'book', 'data': {'ok': ok, 'url': base_url + '/media/books/' + file_id + '/Kochbuch.pdf'}}))
+        else:
+            self.send(text_data=json.dumps({'type': 'book', 'data': {'ok': ok}}))
 
     def compile_latex(self, directory, file_id):
         logging.info('compiling latex...')
