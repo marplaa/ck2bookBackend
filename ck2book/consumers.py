@@ -227,13 +227,13 @@ class BookConsumer(WebsocketConsumer):
                     logging.error("could not download image: " + image['url'])
                     copy(str(Path('static') / 'imagenotfound.jpg'), str(path / orig_name))
 
-                # iterate through all resolutions per picture
-                for size in image['sizes']:
-                    resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
-                    crop_image(path, img_hash, resolution, size['filter'])
-                i = i + 1
-
             else:
                 self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Fehler: Kein erlaubtes Bild: ' + image['url'])
                 copy(str(Path('static') / 'imagenotfound.jpg'), str(path / orig_name))
                 i = i + 1
+
+            # iterate through all resolutions per picture
+            for size in image['sizes']:
+                resolution = int(size['size'].split('x')[0]), int(size['size'].split('x')[1])
+                crop_image(path, img_hash, resolution, size['filter'])
+            i = i + 1
