@@ -203,7 +203,16 @@ class BookConsumer(WebsocketConsumer):
 
         for image in images:
 
-            if image['url'].startswith('https://img.chefkoch-cdn.de/rezepte'):
+            allowed_image_hosts = [
+                'https://img.chefkoch-cdn.de/rezepte',
+                'https://marplaa.github.io/ck2book/'
+            ]
+
+            checked = True
+            for host in allowed_image_hosts:
+                checked &= image['url'].startswith(host)
+
+            if checked:
 
                 self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
 
@@ -225,3 +234,4 @@ class BookConsumer(WebsocketConsumer):
             else:
                 self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Fehler: Kein erlaubtes Bild: ' + image['url'])
                 copy(str(Path('static') / 'imagenotfound.jpg'), str(path / orig_name))
+                i = i + 1
