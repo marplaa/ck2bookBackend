@@ -208,13 +208,13 @@ class BookConsumer(WebsocketConsumer):
                 'https://marplaa.github.io/ck2book/'
             ]
 
-            checked = True
+            checked = False
             for host in allowed_image_hosts:
-                checked &= image['url'].startswith(host)
+                checked |= image['url'].startswith(host)
 
             img_hash = hashlib.md5(bytearray(image['url'], encoding="ascii")).hexdigest()
             orig_name = img_hash + '.jpg'
-            
+
             if checked:
 
                 self.send_message('message', int(i / (len(images)) * 0.5 * 100), 'Lade Bild: ' + image['url'])
