@@ -14,7 +14,7 @@ import wget
 from PIL import Image, ImageFilter, ImageEnhance
 from bs4 import BeautifulSoup
 
-production = True
+production = False
 
 logging.basicConfig(filename='log.log', level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s')
 
